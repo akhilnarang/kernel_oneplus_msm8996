@@ -7058,6 +7058,13 @@ out:
 	return ret;
 }
 
+void __init trace_init(void)
+{
+	tracer_alloc_buffers();
+	init_ftrace_syscalls();
+	trace_event_init();	
+}
+
 __init static int clear_boot_tracer(void)
 {
 	/*
@@ -7077,6 +7084,5 @@ __init static int clear_boot_tracer(void)
 	return 0;
 }
 
-early_initcall(tracer_alloc_buffers);
 fs_initcall(tracer_init_debugfs);
 late_initcall(clear_boot_tracer);

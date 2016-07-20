@@ -2855,8 +2855,8 @@ static long binder_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			ret = -EINVAL;
 			goto err;
 		}
-			if (put_user_preempt_disabled(BINDER_CURRENT_PROTOCOL_VERSION, &ver->protocol_version)) {
-				ret = -EINVAL;
+		if (put_user_preempt_disabled(BINDER_CURRENT_PROTOCOL_VERSION, &ver->protocol_version)) {
+			ret = -EINVAL;
 			goto err;
 		}
 		break;

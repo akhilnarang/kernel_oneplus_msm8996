@@ -37,6 +37,9 @@
 #include "io.h"
 #include "debug.h"
 
+#ifdef CONFIG_FG_BQ27541
+#include "../../power/oem_external_fg.h"
+#endif
 
 static bool enable_dwc3_u1u2;
 module_param(enable_dwc3_u1u2, bool, S_IRUGO | S_IWUSR);
@@ -758,6 +761,22 @@ static int dwc3_ep0_set_isoch_delay(struct dwc3 *dwc, struct usb_ctrlrequest *ct
 	return 0;
 }
 
+static struct notify_usb_enumeration_status *usb_enumeration_status = NULL;
+
+#ifdef CONFIG_FG_BQ27541
+void regsister_notify_usb_enumeration_status(struct notify_usb_enumeration_status *status)
+{
+	if (usb_enumeration_status) {
+		usb_enumeration_status = status;
+		pr_err("usb_enumeration_status %s multiple usb_enumeration_status called\n",
+				__func__);
+	} else {
+		usb_enumeration_status = status;
+	}
+}
+EXPORT_SYMBOL(regsister_notify_usb_enumeration_status);
+#endif
+
 static int dwc3_ep0_std_request(struct dwc3 *dwc, struct usb_ctrlrequest *ctrl)
 {
 	int ret;
@@ -776,6 +795,11 @@ static int dwc3_ep0_std_request(struct dwc3 *dwc, struct usb_ctrlrequest *ctrl)
 		ret = dwc3_ep0_handle_feature(dwc, ctrl, 1);
 		break;
 	case USB_REQ_SET_ADDRESS:
+#ifdef CONFIG_FG_BQ27541
+		if(usb_enumeration_status && usb_enumeration_status->notify_usb_enumeration) {
+			usb_enumeration_status->notify_usb_enumeration(true);
+		}
+#endif
 		dwc3_trace(trace_dwc3_ep0, "USB_REQ_SET_ADDRESS\n");
 		ret = dwc3_ep0_set_address(dwc, ctrl);
 		break;

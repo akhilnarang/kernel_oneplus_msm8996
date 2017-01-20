@@ -285,6 +285,11 @@ static void update_cpu_freq(void)
 static void power_supply_callback(struct power_supply *psy)
 {
 	static struct power_supply *bms_psy;
+#ifdef CONFIG_FG_BQ27541
+	static struct power_supply *usb_psy;
+	int usb_state;
+	bool is_usb_present;
+#endif
 	union power_supply_propval ret = {0,};
 	int battery_percentage;
 	enum bcl_threshold_state prev_soc_state;
@@ -293,6 +298,17 @@ static void power_supply_callback(struct power_supply *psy)
 		pr_debug("BCL is not enabled\n");
 		return;
 	}
+
+#ifdef CONFIG_FG_BQ27541
+	if (!usb_psy)
+		usb_psy = power_supply_get_by_name("usb");
+	if (usb_psy) {
+		usb_state = usb_psy->get_property(usb_psy,
+				POWER_SUPPLY_PROP_PRESENT, &ret);
+		if (usb_state == 0)
+			is_usb_present = ret.intval;
+	}
+#endif
 
 	if (!bms_psy)
 		bms_psy = power_supply_get_by_name("bms");
@@ -304,6 +320,12 @@ static void power_supply_callback(struct power_supply *psy)
 		pr_debug("Battery SOC reported:%d", battery_soc_val);
 		trace_bcl_sw_mitigation("SoC reported", battery_soc_val);
 		prev_soc_state = bcl_soc_state;
+#ifdef CONFIG_FG_BQ27541
+		pr_debug("is_usb_present:%d", is_usb_present);
+		if(is_usb_present)
+			bcl_soc_state = BCL_HIGH_THRESHOLD;
+		else
+#endif
 		bcl_soc_state = (battery_soc_val <= soc_low_threshold) ?
 					BCL_LOW_THRESHOLD : BCL_HIGH_THRESHOLD;
 		if (bcl_soc_state == prev_soc_state)

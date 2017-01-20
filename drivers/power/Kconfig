@@ -636,6 +636,18 @@ config MSM_BCL_PERIPHERAL_CTL
 	  provides routines to configure and monitor the BCL
 	  PMIC peripheral.
 
+config FG_BQ27541
+	tristate "TI bq27541 fg"
+	depends on I2C
+	help
+	  Say Y here to enable the TI Fuel Gauge driver.
+
+config ONEPLUS_FASTCHG
+	tristate "ONEPLUS FAST CHARGE"
+	depends on I2C
+	help
+	  Say Y here to enable the ONEPLUS FAST CHARGE driver.
+
 source "drivers/power/reset/Kconfig"
 
 endif # POWER_SUPPLY

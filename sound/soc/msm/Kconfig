@@ -146,6 +146,7 @@ config SND_SOC_MSM8996
 	select SND_SOC_WCD9330
 	select SND_SOC_WCD9335
 	select SND_SOC_WSA881X
+	select SND_SOC_TFA9890
 	select QTI_PP
 	select SND_SOC_CPE
 	select MSM_ULTRASOUND

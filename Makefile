@@ -354,7 +354,7 @@ include $(srctree)/scripts/Kbuild.include
 
 # Make variables (CC, etc...)
 AS		= $(CROSS_COMPILE)as
-LD		= $(CROSS_COMPILE)ld
+LD		= $(CROSS_COMPILE)ld.bfd
 CC		= $(CCACHE) $(CROSS_COMPILE)gcc
 CPP		= $(CC) -E
 AR		= $(CROSS_COMPILE)ar
@@ -374,7 +374,7 @@ CHECKFLAGS     := -D__linux__ -Dlinux -D__STDC__ -Dunix -D__unix__ \
 		  -Wbitwise -Wno-return-void $(CF)
 CFLAGS_MODULE   =
 AFLAGS_MODULE   =
-LDFLAGS_MODULE  =
+LDFLAGS_MODULE  = --strip-debug
 CFLAGS_KERNEL	=
 AFLAGS_KERNEL	=
 CFLAGS_GCOV	= -fprofile-arcs -ftest-coverage -fno-tree-loop-im
@@ -403,7 +403,22 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -fno-strict-aliasing -fno-common \
 		   -Werror-implicit-function-declaration \
 		   -Wno-format-security \
+		   -mcpu=cortex-a57.cortex-a53 -mtune=cortex-a57.cortex-a53 \
 		   -std=gnu89
+
+# arter97's optimizations
+KBUILD_CFLAGS	+= -pipe -fno-pic -O2 -march=armv8-a+crc
+
+# Snapdragon 820 doesn't need 835769/843419 erratum fixes
+# some toolchain enables those fixes automatically, so opt-out
+KBUILD_CFLAGS	+= $(call cc-option, -mno-fix-cortex-a53-835769)
+KBUILD_CFLAGS	+= $(call cc-option, -mno-fix-cortex-a53-843419)
+LDFLAGS_vmlinux	+= $(call ld-option, --no-fix-cortex-a53-835769)
+LDFLAGS_vmlinux	+= $(call ld-option, --no-fix-cortex-a53-843419)
+LDFLAGS_MODULE	+= $(call ld-option, --no-fix-cortex-a53-835769)
+LDFLAGS_MODULE	+= $(call ld-option, --no-fix-cortex-a53-843419)
+LDFLAGS		+= $(call ld-option, --no-fix-cortex-a53-835769)
+LDFLAGS		+= $(call ld-option, --no-fix-cortex-a53-843419)
 
 KBUILD_AFLAGS_KERNEL :=
 KBUILD_CFLAGS_KERNEL :=
@@ -618,11 +633,13 @@ KBUILD_AFLAGS	+= $(call cc-option,-fno-PIE)
 # Kill all maybe-uninitialized warnings
 KBUILD_CFLAGS	+= $(call cc-disable-warning,maybe-uninitialized,)
 
-ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
-KBUILD_CFLAGS	+= -Os
-else
-KBUILD_CFLAGS	+= -O2 $(call cc-disable-warning,maybe-uninitialized,)
-endif
+#ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
+#KBUILD_CFLAGS	+= -Os $(call cc-disable-warning,maybe-uninitialized,)
+#else
+#KBUILD_CFLAGS	+= -O2
+#KBUILD_CFLAGS += $(call cc-disable-warning,maybe-uninitialized)
+#KBUILD_CFLAGS += $(call cc-disable-warning,array-bounds)
+#endif
 
 # Tell gcc to never replace conditional load with a non-conditional one
 KBUILD_CFLAGS	+= $(call cc-option,--param=allow-store-data-races=0)
@@ -802,8 +819,8 @@ ifeq ($(CONFIG_STRIP_ASM_SYMS),y)
 LDFLAGS_vmlinux	+= $(call ld-option, -X,)
 endif
 
-LDFLAGS_vmlinux += $(call ld-option, --fix-cortex-a53-843419)
-LDFLAGS_MODULE += $(call ld-option, --fix-cortex-a53-843419)
+#LDFLAGS_vmlinux += $(call ld-option, --fix-cortex-a53-843419)
+#LDFLAGS_MODULE += $(call ld-option, --fix-cortex-a53-843419)
 
 # Default kernel image to build when no specific target is given.
 # KBUILD_IMAGE may be overruled on the command line or

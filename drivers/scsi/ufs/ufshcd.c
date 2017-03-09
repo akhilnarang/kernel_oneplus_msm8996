@@ -1534,7 +1534,7 @@ static void ufshcd_init_clk_gating(struct ufs_hba *hba)
 	INIT_WORK(&gating->ungate_work, ufshcd_ungate_work);
 
 	snprintf(wq_name, ARRAY_SIZE(wq_name), "ufs_clk_ungating_%d",
-			hba->host->host_no);
+		hba->host->host_no);
 	hba->clk_gating.ungating_workq = create_singlethread_workqueue(wq_name);
 
 	gating->is_enabled = true;
@@ -3367,6 +3367,11 @@ static inline int ufshcd_read_power_desc(struct ufs_hba *hba,
 int ufshcd_read_device_desc(struct ufs_hba *hba, u8 *buf, u32 size)
 {
 	return ufshcd_read_desc(hba, QUERY_DESC_IDN_DEVICE, 0, buf, size);
+}
+
+int ufshcd_read_geometry_desc(struct ufs_hba *hba, u8 *buf, u32 size)
+{
+	return ufshcd_read_desc(hba, QUERY_DESC_IDN_GEOMETRY, 0, buf, size);
 }
 
 /**
@@ -6900,6 +6905,8 @@ static int ufshcd_probe_hba(struct ufs_hba *hba)
 			}
 			hba->clk_scaling.is_allowed = true;
 		}
+
+		ufs_fill_info(hba);
 
 		scsi_scan_host(hba->host);
 		pm_runtime_put_sync(hba->dev);

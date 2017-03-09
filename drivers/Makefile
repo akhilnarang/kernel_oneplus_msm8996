@@ -170,3 +170,13 @@ obj-$(CONFIG_ESOC)		+= esoc/
 obj-$(CONFIG_BIF)		+= bif/
 
 obj-$(CONFIG_SENSORS_SSC)	+= sensors/
+
+# <t-base drivers
+obj-$(CONFIG_MOBICORE_DRIVER)	+= gud/
+
+obj-$(CONFIG_NFC)		+= nfc/
+
+obj-y 	+= param_read_write/
+
+obj-$(CONFIG_OEM_DEBUG_SUPORT)  += oneplus/
+obj-y 	+= oem_debug/

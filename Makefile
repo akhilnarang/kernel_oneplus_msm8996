@@ -1,7 +1,7 @@
 VERSION = 3
 PATCHLEVEL = 18
 SUBLEVEL = 50
-EXTRAVERSION =
+EXTRAVERSION = -IllusionKernel
 NAME = Shuffling Zombie Juror
 
 # *DOCUMENTATION*

@@ -2327,7 +2327,6 @@ static int msm_cpp_cfg_frame(struct cpp_device *cpp_dev,
 		return -EINVAL;
 	}
 
-	/* Stripe index starts at zero */
 	if ((!new_frame->num_strips) ||
 		(new_frame->first_stripe_index >= new_frame->num_strips) ||
 		(new_frame->last_stripe_index  >= new_frame->num_strips) ||

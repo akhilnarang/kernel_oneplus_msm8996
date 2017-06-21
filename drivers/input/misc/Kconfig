@@ -779,4 +779,9 @@ config INPUT_DRV2667_HAPTICS
 
 source "drivers/input/misc/ots_pat9125/Kconfig"
 
+config FINGERPRINT_FPC1022
+	default n
+	tristate "fpc fingerprint sensor support"
+	depends on SPI_MASTER
+
 endif

@@ -295,6 +295,8 @@ void __weak arch_suspend_enable_irqs(void)
 	local_irq_enable();
 }
 
+extern void thaw_fingerprintd(void);
+
 /**
  * suspend_enter - Make the system enter the given sleep state.
  * @state: System sleep state to enter.
@@ -391,6 +393,7 @@ static int suspend_enter(suspend_state_t state, bool *wakeup)
 
  Platform_wake:
 	platform_resume_noirq(state);
+	thaw_fingerprintd();
 	dpm_resume_noirq(PMSG_RESUME);
 
  Platform_early_resume:

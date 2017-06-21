@@ -75,3 +75,4 @@ obj-$(CONFIG_INPUT_YEALINK)		+= yealink.o
 obj-$(CONFIG_INPUT_IDEAPAD_SLIDEBAR)	+= ideapad_slidebar.o
 obj-$(CONFIG_INPUT_PIXART_OTS_PAT9125_SWITCH)	+= ots_pat9125/
 obj-$(CONFIG_FINGERPRINT_FPC1022)	+= fpc1020_tee.o
+obj-$(CONFIG_TRI_STATE_KEY)		+= tri_state_key.o

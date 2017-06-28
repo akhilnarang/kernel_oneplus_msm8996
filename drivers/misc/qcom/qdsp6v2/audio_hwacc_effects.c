@@ -29,8 +29,6 @@ struct q6audio_effects {
 	struct msm_hwacc_effects_config  config;
 	struct mutex			lock;
 
-	struct mutex			lock;
-
 	atomic_t			in_count;
 	atomic_t			out_count;
 

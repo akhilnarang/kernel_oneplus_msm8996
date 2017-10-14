@@ -99,3 +99,6 @@ all.config
 
 # Wireguard
 net/wireguard/
+
+# compiled stuff
+out/

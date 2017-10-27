@@ -2602,6 +2602,68 @@ static struct device_node *mdss_dsi_get_fb_node_cb(struct platform_device *pdev)
 	return fb_node;
 }
 
+static int mdss_dsi_vendor_events(struct mdss_dsi_ctrl_pdata *pdata,
+				  int event, void *arg)
+{
+	int rc = 0;
+
+	switch (event) {
+	case MDSS_EVENT_PANEL_SET_ACL:
+		pdata->acl_mode = (int) (unsigned long) arg;
+		mdss_dsi_panel_set_acl(pdata, pdata->acl_mode);
+		break;
+	case MDSS_EVENT_PANEL_GET_ACL:
+		rc = pdata->acl_mode;
+		break;
+	case MDSS_EVENT_PANEL_SET_MAX_BRIGHTNESS:
+		pdata->max_brightness_level = (int) (unsigned long) arg;
+		mdss_dsi_panel_set_max_brightness(pdata, pdata->max_brightness_level);
+		break;
+	case MDSS_EVENT_PANEL_GET_MAX_BRIGHTNESS:
+		rc = mdss_dsi_panel_get_max_brightness(pdata);
+		break;
+	case MDSS_EVENT_PANEL_SET_SRGB_MODE:
+		pdata->SRGB_mode = (int) (unsigned long) arg;
+		mdss_dsi_panel_set_srgb_mode(pdata, pdata->SRGB_mode);
+		break;
+	case MDSS_EVENT_PANEL_GET_SRGB_MODE:
+		rc = mdss_dsi_panel_get_srgb_mode(pdata);
+		break;
+	case MDSS_EVENT_PANEL_SET_ADOBE_RGB_MODE:
+		pdata->Adobe_RGB_mode = (int) (unsigned long) arg;
+		mdss_dsi_panel_set_adobe_rgb_mode(pdata, pdata->Adobe_RGB_mode);
+		break;
+	case MDSS_EVENT_PANEL_GET_ADOBE_RGB_MODE:
+		rc = mdss_dsi_panel_get_adobe_rgb_mode(pdata);
+		break;
+	case MDSS_EVENT_PANEL_SET_DCI_P3_MODE:
+		pdata->dci_p3_mode = (int) (unsigned long) arg;
+		mdss_dsi_panel_set_dci_p3_mode(pdata, pdata->dci_p3_mode);
+		break;
+	case MDSS_EVENT_PANEL_GET_DCI_P3_MODE:
+		rc = mdss_dsi_panel_get_dci_p3_mode(pdata);
+		break;
+	case MDSS_EVENT_PANEL_SET_NIGHT_MODE:
+		pdata->night_mode = (int) (unsigned long) arg;
+		mdss_dsi_panel_set_night_mode(pdata, pdata->night_mode);
+		break;
+	case MDSS_EVENT_PANEL_GET_NIGHT_MODE:
+		rc = mdss_dsi_panel_get_night_mode(pdata);
+		break;
+	case MDSS_EVENT_PANEL_SET_ONEPLUS_MODE:
+		pdata->oneplus_mode = (int) (unsigned long) arg;
+		mdss_dsi_panel_set_oneplus_mode(pdata, pdata->oneplus_mode);
+		break;
+	case MDSS_EVENT_PANEL_GET_ONEPLUS_MODE:
+		rc = mdss_dsi_panel_get_oneplus_mode(pdata);
+		break;
+	default:
+		pr_debug("%s: not a vendor event=%d\n", __func__, event);
+		break;
+	}
+	return rc;
+}
+
 static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 				  int event, void *arg)
 {
@@ -2766,9 +2828,10 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 		}
 		break;
 	default:
-		pr_debug("%s: unhandled event=%d\n", __func__, event);
+		rc = mdss_dsi_vendor_events(ctrl_pdata, event, arg);
 		break;
 	}
+
 	pr_debug("%s-:event=%d, rc=%d\n", __func__, event, rc);
 	return rc;
 }

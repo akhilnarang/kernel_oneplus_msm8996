@@ -40,8 +40,8 @@
 #include <linux/sched.h>
 #include <linux/poll.h>
 #include <linux/regulator/consumer.h>
-#include <linux/nfc/p61.h>
-#include <linux/nfc/pn544.h>
+#include "p61.h"
+#include "pn544.h"
 extern long  pn544_dev_ioctl(struct file *filp, unsigned int cmd,
         unsigned long arg);
 #define DRAGON_P61 1

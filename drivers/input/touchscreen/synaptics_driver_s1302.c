@@ -54,7 +54,7 @@
 #include <linux/input/mt.h>
 
 #include "synaptics_s1302_redremote.h"
-
+//#include <linux/boot_mode.h>
 enum oem_boot_mode{
 	MSM_BOOT_MODE__NORMAL,
 	MSM_BOOT_MODE__FASTBOOT,
@@ -101,6 +101,7 @@ static int key_reverse = 0;
 static struct synaptics_ts_data *tc_g = NULL;
 int test_err = 0;
 static int touchkey_wait_time = 45;
+static bool key_disable=false;
 /*-----------------------------------------Global Registers----------------------------------------------*/
 static unsigned short SynaF34DataBase;
 static unsigned short SynaF34QueryBase;
@@ -245,7 +246,6 @@ static struct i2c_driver tc_i2c_driver = {
 	.remove		= synaptics_ts_remove,
 	.id_table	= synaptics_ts_id,
 	.driver = {
-		//		.owner  = THIS_MODULE,
 		.name	= TPD_DEVICE,
 		.of_match_table =  synaptics_match_table,
 		.pm = &synaptic_pm_ops,
@@ -298,8 +298,6 @@ struct synaptics_ts_data {
 	char fw_name[TP_FW_NAME_MAX_LEN];
 	char fw_id[12];
 	char manu_name[12];
-
-	struct work_struct pm_work;
 };
 
 static int tc_hw_pwron(struct synaptics_ts_data *ts)
@@ -694,21 +692,21 @@ static void int_key(struct synaptics_ts_data *ts )
         TPD_ERR("touch_key[0x%x],touchkey_state[0x%x]\n",button_key,ts->pre_btn_state);
     if (!is_report_key)
         return;
-    if((button_key & 0x01) && !(ts->pre_btn_state & 0x01))//back
-    {
-        input_report_key(ts->input_dev, REP_KEY_BACK, 1);
-        input_sync(ts->input_dev);
-    }else if(!(button_key & 0x01) && (ts->pre_btn_state & 0x01)){
-        input_report_key(ts->input_dev, REP_KEY_BACK, 0);
-        input_sync(ts->input_dev);
-    }
-
-    if((button_key & 0x02) && !(ts->pre_btn_state & 0x02))//menu
+    if((button_key & 0x01) && !(ts->pre_btn_state & 0x01) && !key_disable)//back
     {
         input_report_key(ts->input_dev, REP_KEY_MENU, 1);
         input_sync(ts->input_dev);
-    }else if(!(button_key & 0x02) && (ts->pre_btn_state & 0x02)){
+    }else if(!(button_key & 0x01) && (ts->pre_btn_state & 0x01) && !key_disable){
         input_report_key(ts->input_dev, REP_KEY_MENU, 0);
+        input_sync(ts->input_dev);
+    }
+
+    if((button_key & 0x02) && !(ts->pre_btn_state & 0x02) && !key_disable)//menu
+    {
+        input_report_key(ts->input_dev, REP_KEY_BACK, 1);
+        input_sync(ts->input_dev);
+    }else if(!(button_key & 0x02) && (ts->pre_btn_state & 0x02) && !key_disable){
+        input_report_key(ts->input_dev, REP_KEY_BACK, 0);
         input_sync(ts->input_dev);
     }
 
@@ -1489,6 +1487,53 @@ const struct file_operations proc_virtual_key =
 	.release	= single_release,
 };
 
+static int key_disable_read_func(struct seq_file *seq, void *offset)
+{
+    seq_printf(seq, "s1302 key_disable %s\n",key_disable?("disable"):("enable"));
+    return 0 ;
+}
+
+static int key_disable_open_func(struct inode *inode, struct file *file)
+{
+	return single_open(file, key_disable_read_func, inode->i_private);
+}
+
+static ssize_t key_disable_write_func(struct file *file, const char __user *buffer, size_t count, loff_t *ppos)
+{
+	char buf[10]={0};
+
+	if( count > sizeof(buf)){
+		TPD_ERR("%s error\n",__func__);
+		return count;
+	}
+
+	if(copy_from_user(buf, buffer, count))
+	{
+		TPD_ERR("%s copy error\n", __func__);
+		return count;
+	}
+	if (NULL != strstr(buf,"disable"))
+	{
+		key_disable =true;
+	}
+	else if (NULL != strstr(buf,"enable"))
+	{
+		key_disable =false;
+	}
+	TPD_ERR("%s key_disable:%d \n",__func__,key_disable);
+	return count;
+}
+
+const struct file_operations key_disable_proc_fops =
+{
+	.owner		= THIS_MODULE,
+	.open		= key_disable_open_func,
+	.read		= seq_read,
+	.write          = key_disable_write_func,
+	.llseek 	= seq_lseek,
+	.release	= single_release,
+};
+
 static int synaptics_s1302_proc(void)
 {
     struct proc_dir_entry *proc_entry=0;
@@ -1504,6 +1549,7 @@ static int synaptics_s1302_proc(void)
     proc_entry = proc_create_data("virtual_key", 0666, procdir,&proc_virtual_key,NULL);
     proc_entry = proc_create_data("touchkey_baseline_test", 0644, procdir, &tp_baseline_image_proc_fops,NULL);
     proc_entry = proc_create_data("setting_wait_time_test", 0644, procdir, &setting_wait_time_proc_fops,NULL);
+    proc_entry = proc_create_data("key_disable", 0666, procdir, &key_disable_proc_fops,NULL);
     TPD_ERR("create nodes is successe!\n");
 
     return 0;
@@ -1814,18 +1860,6 @@ static void synaptics_hard_reset(struct synaptics_ts_data *ts)
     }
 
 }
-
-static void synaptics_suspend_resume(struct work_struct *work)
-{
-	struct synaptics_ts_data *ts =
-		container_of(work, typeof(*ts), pm_work);
-
-	if (ts->suspended)
-		synaptics_ts_suspend(&ts->client->dev);
-	else
-		synaptics_ts_resume(&ts->client->dev);
-}
-
 static int synaptics_parse_dts(struct device *dev, struct synaptics_ts_data *ts)
 {
 	int rc;
@@ -2044,9 +2078,6 @@ static int synaptics_ts_probe(struct i2c_client *client, const struct i2c_device
 	ret = synaptics_enable_interrupt(ts, 1);
 	if(ret < 0)
 		TPD_ERR("%s enable interrupt error ret=%d\n",__func__,ret);
-
-	INIT_WORK(&ts->pm_work, synaptics_suspend_resume);
-
 #if defined(CONFIG_FB)
 	ts->suspended = 0;
 	ts->fb_notif.notifier_call = fb_notifier_callback;
@@ -2201,30 +2232,30 @@ ERR_RESUME:
 #if defined(CONFIG_FB)
 static int fb_notifier_callback(struct notifier_block *self, unsigned long event, void *data)
 {
-	struct synaptics_ts_data *ts =
-		container_of(self, struct synaptics_ts_data, fb_notif);
 	struct fb_event *evdata = data;
-	int *blank = evdata->data;
+	int *blank;
 
-	if (event != FB_EVENT_BLANK)
-		return NOTIFY_OK;
+	struct synaptics_ts_data *ts = container_of(self, struct synaptics_ts_data, fb_notif);
 
-	switch (*blank) {
-	case FB_BLANK_UNBLANK:
-	case FB_BLANK_NORMAL:
-		if (ts->suspended) {
-			ts->suspended = 0;
-			queue_work(system_highpri_wq, &ts->pm_work);
-		}
-		break;
-	case FB_BLANK_POWERDOWN:
-		if (!ts->suspended) {
-			ts->suspended = 1;
-			queue_work(system_highpri_wq, &ts->pm_work);
+	if(FB_EVENT_BLANK != event)
+	return 0;
+	if((evdata) && (evdata->data) && (ts) && (ts->client)&&(event == FB_EVENT_BLANK)) {
+		blank = evdata->data;
+		if( *blank == FB_BLANK_UNBLANK || *blank == FB_BLANK_NORMAL) {
+			TPD_DEBUG("%s going TP resume\n", __func__);
+			if(ts->suspended == 1){
+				ts->suspended = 0;
+				synaptics_ts_resume(&ts->client->dev);
+			}
+		} else if( *blank == FB_BLANK_POWERDOWN) {
+			TPD_DEBUG("%s : going TP suspend\n", __func__);
+			if(ts->suspended == 0) {
+				ts->suspended = 1;
+				synaptics_ts_suspend(&ts->client->dev);
+			}
 		}
 	}
-
-	return NOTIFY_OK;
+	return 0;
 }
 #endif
 

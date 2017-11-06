@@ -613,12 +613,6 @@ config MEMORY_STATE_TIME
 	help
 	  Memory time statistics exported to /sys/kernel/memory_state_time
 
-config GPIO_SWITCH
-	tristate "GPIO switch"
-	default y
-	help
-	  Use gpio switch set gpio out high or low
-
 config TUSB320_TYPE_C
 	tristate "USB Type-C charger detection support using external chip"
 	depends on I2C && POWER_SUPPLY

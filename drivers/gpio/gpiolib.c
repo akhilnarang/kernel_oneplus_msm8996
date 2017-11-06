@@ -21,6 +21,8 @@
 #define CREATE_TRACE_POINTS
 #include <trace/events/gpio.h>
 
+#include <../power/oem_external_fg.h>
+
 /* Implementation infrastructure for GPIO interfaces.
  *
  * The GPIO programming interface allows for inlining speed-critical
@@ -1134,11 +1136,17 @@ static bool _gpiod_get_raw_value(const struct gpio_desc *desc)
 	struct gpio_chip	*chip;
 	bool value;
 	int offset;
+	bool dash_rx;
 
 	chip = desc->chip;
 	offset = gpio_chip_hwgpio(desc);
-	value = chip->get ? chip->get(chip, offset) : false;
-	trace_gpio_value(desc_to_gpio(desc), 1, value);
+	dash_rx = dash_adapter_update_is_rx_gpio(desc_to_gpio(desc));
+	if (dash_rx && chip->get_dash) {
+		value = chip->get_dash(chip, offset);
+	} else {
+		value = chip->get ? chip->get(chip, offset) : -EIO;
+		trace_gpio_value(desc_to_gpio(desc), 1, value);
+	}
 	return value;
 }
 
@@ -1247,13 +1255,25 @@ static void _gpiod_set_raw_value(struct gpio_desc *desc, bool value)
 	struct gpio_chip	*chip;
 
 	chip = desc->chip;
-	trace_gpio_value(desc_to_gpio(desc), 0, value);
+	if (dash_adapter_update_is_tx_gpio(desc_to_gpio(desc)) == false)
+		trace_gpio_value(desc_to_gpio(desc), 0, value);
 	if (test_bit(FLAG_OPEN_DRAIN, &desc->flags))
 		_gpio_set_open_drain_value(desc, value);
 	else if (test_bit(FLAG_OPEN_SOURCE, &desc->flags))
 		_gpio_set_open_source_value(desc, value);
-	else
-		chip->set(chip, gpio_chip_hwgpio(desc), value);
+	else {
+		if (dash_adapter_update_is_tx_gpio(desc_to_gpio(desc))) {
+			if (chip->set_dash) {
+				chip->set_dash(chip,
+					gpio_chip_hwgpio(desc), value);
+			} else {
+				/*pr_err("%s set_dash not exist\n", __func__);*/
+				chip->set(chip, gpio_chip_hwgpio(desc), value);
+			}
+		} else {
+			chip->set(chip, gpio_chip_hwgpio(desc), value);
+		}
+	}
 }
 
 /**

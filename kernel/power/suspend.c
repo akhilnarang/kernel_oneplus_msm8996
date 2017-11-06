@@ -295,8 +295,6 @@ void __weak arch_suspend_enable_irqs(void)
 	local_irq_enable();
 }
 
-extern void thaw_fingerprintd(void);
-
 /**
  * suspend_enter - Make the system enter the given sleep state.
  * @state: System sleep state to enter.
@@ -304,6 +302,7 @@ extern void thaw_fingerprintd(void);
  *
  * This function should be called after devices have been suspended.
  */
+extern void thaw_fingerprintd(void);
 static int suspend_enter(suspend_state_t state, bool *wakeup)
 {
 	char suspend_abort[MAX_SUSPEND_ABORT_LEN];

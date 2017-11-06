@@ -144,6 +144,7 @@ struct bq27541_device_info {
 	int soc_pre;
 	int  batt_vol_pre;
 	int current_pre;
+	int health_pre;
 	unsigned long rtc_resume_time;
 	unsigned long rtc_suspend_time;
 	atomic_t suspended;
@@ -784,6 +785,23 @@ static int bq27541_remaining_capacity(struct bq27541_device_info *di)
 	return cap;
 }
 
+static int bq27541_batt_health(struct bq27541_device_info *di)
+{
+	int ret;
+	int health = 0;
+
+	if(di->alow_reading) {
+		ret = bq27541_read(BQ27541_REG_NIC, &health, 0, di);
+		if (ret) {
+			pr_err("error reading health\n");
+			return ret;
+		}
+		di->health_pre = health;
+	}
+
+	return di->health_pre;
+}
+
 static int bq27541_get_battery_mvolts(void)
 {
 	return bq27541_battery_voltage(bq27541_di);
@@ -792,6 +810,11 @@ static int bq27541_get_battery_mvolts(void)
 static int bq27541_get_batt_remaining_capacity(void)
 {
 	return bq27541_remaining_capacity(bq27541_di);
+}
+
+static int bq27541_get_batt_health(void)
+{
+	return bq27541_batt_health(bq27541_di);
 }
 
 static int bq27541_get_battery_temperature(void)
@@ -880,7 +903,7 @@ static struct external_battery_gauge bq27541_batt_gauge = {
 	.is_battery_temp_within_range   = bq27541_is_battery_temp_within_range,
 	.is_battery_id_valid        = bq27541_is_battery_id_valid,
 	.get_batt_remaining_capacity        =bq27541_get_batt_remaining_capacity,
-
+	.get_batt_health        = bq27541_get_batt_health,
 	.get_battery_soc            = bq27541_get_battery_soc,
 	.get_average_current        = bq27541_get_average_current,
 	.set_alow_reading		= bq27541_set_alow_reading,
@@ -1201,6 +1224,7 @@ static int bq27541_parse_dt(struct bq27541_device_info *di)
 static int bq27541_battery_probe(struct i2c_client *client,
 		const struct i2c_device_id *id)
 {
+	char *name;
 	struct bq27541_device_info *di;
 	struct bq27541_access_methods *bus;
 	int num;
@@ -1217,11 +1241,18 @@ static int bq27541_battery_probe(struct i2c_client *client,
 	if (retval < 0)
 		return retval;
 
+	name = kasprintf(GFP_KERNEL, "%s-%d", id->name, num);
+	if (!name) {
+		pr_err("failed to allocate device name\n");
+		retval = -ENOMEM;
+		goto batt_failed_1;
+	}
+
 	di = kzalloc(sizeof(*di), GFP_KERNEL);
 	if (!di) {
 		pr_err("failed to allocate device info data\n");
 		retval = -ENOMEM;
-		goto batt_failed_1;
+		goto batt_failed_2;
 	}
 	di->id = num;
 
@@ -1229,7 +1260,7 @@ static int bq27541_battery_probe(struct i2c_client *client,
 	if (!bus) {
 		pr_err("failed to allocate access method data\n");
 		retval = -ENOMEM;
-		goto batt_failed_2;
+		goto batt_failed_3;
 	}
 
 	i2c_set_clientdata(client, di);
@@ -1256,19 +1287,19 @@ static int bq27541_battery_probe(struct i2c_client *client,
 		retval = sysfs_create_group(&this_device.dev.kobj,
 				&fs_attr_group);
 		if (retval)
-			goto batt_failed_3;
+			goto batt_failed_4;
 	} else
-		goto batt_failed_3;
+		goto batt_failed_4;
 #endif
 
 	if (retval) {
 		pr_err("failed to setup bq27541\n");
-		goto batt_failed_3;
+		goto batt_failed_4;
 	}
 
 	if (retval) {
 		pr_err("failed to powerup bq27541\n");
-		goto batt_failed_3;
+		goto batt_failed_4;
 	}
 
 	spin_lock_init(&lock);
@@ -1284,10 +1315,12 @@ static int bq27541_battery_probe(struct i2c_client *client,
 	check_bat_type(di);
 	return 0;
 
-batt_failed_3:
+batt_failed_4:
 	kfree(bus);
-batt_failed_2:
+batt_failed_3:
 	kfree(di);
+batt_failed_2:
+	kfree(name);
 batt_failed_1:
 	mutex_lock(&battery_mutex);
 	idr_remove(&battery_id, num);

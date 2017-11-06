@@ -4597,6 +4597,8 @@ static enum power_supply_property fg_power_props[] = {
 	POWER_SUPPLY_PROP_ENABLE_JEITA_DETECTION,
 	POWER_SUPPLY_PROP_BATTERY_INFO,
 	POWER_SUPPLY_PROP_BATTERY_INFO_ID,
+	POWER_SUPPLY_PROP_BATTERY_4P4V_PRESENT,
+	POWER_SUPPLY_PROP_BATTERY_HEALTH,
 };
 
 #define DEFALUT_BATT_TEMP 250
@@ -4686,6 +4688,12 @@ static int fg_power_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_BATTERY_4P4V_PRESENT:
 		val->intval = chip->battery_4p4v_present;
+		break;
+	case POWER_SUPPLY_PROP_BATTERY_HEALTH:
+		if (external_fg && external_fg->get_batt_health)
+			val->intval = external_fg->get_batt_health();
+		else
+			val->intval = -1;
 		break;
 	case POWER_SUPPLY_PROP_UPDATE_NOW:
 		val->intval = 0;
@@ -6060,10 +6068,6 @@ static int fg_config_esr_extract(struct fg_chip *chip, bool disable)
 		pr_err("unable to write sys_cfg_1 rc= %d\n", rc);
 		goto done;
 	}
-
-#ifndef CONFIG_FG_BQ27541
-	chip->esr_extract_disabled = disable;
-#endif
 
 	if (fg_debug_mask & FG_STATUS)
 		pr_info("ESR extract is %sabled\n", disable ? "dis" : "en");

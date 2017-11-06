@@ -352,13 +352,6 @@ static ssize_t report_home_set(struct device *dev,
 }
 static DEVICE_ATTR(report_home, S_IWUSR, NULL, report_home_set);
 
-static ssize_t update_info_set(struct device *dev,
-	struct device_attribute *attr, const char *buf, size_t count)
-{
-	return count;
-}
-static DEVICE_ATTR(update_info, S_IWUSR, NULL, update_info_set);
-
 static ssize_t screen_state_get(struct device* device,
 			     struct device_attribute* attribute,
 			     char* buffer)
@@ -393,7 +386,6 @@ static struct attribute *attributes[] = {
 	&dev_attr_hw_reset.attr,
 	&dev_attr_irq.attr,
 	&dev_attr_report_home.attr,
-	&dev_attr_update_info.attr,
 	&dev_attr_screen_state.attr,
 	&dev_attr_proximity_state.attr,
 	NULL

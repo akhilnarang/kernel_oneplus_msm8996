@@ -54,7 +54,6 @@
 #include <linux/of_gpio.h>
 #include <linux/miscdevice.h>
 #include <linux/spinlock.h>
-#include <linux/nfc/pn544.h>
 #include <asm/siginfo.h>
 #include <linux/rcupdate.h>
 #include <linux/sched.h>
@@ -63,6 +62,8 @@
 
 #include <linux/clk.h>
 #include <linux/regulator/consumer.h>
+
+#include "pn544.h"
 
 #define DRAGON_NFC 1
 #define SIG_NFC 44
@@ -96,31 +97,6 @@ struct pn544_dev    {
 
 };
 
-/* Different driver debug lever */
-#if 0
-enum Pn544_DEBUG_LEVEL {
-    Pn544_DEBUG_OFF,
-    Pn544_FULL_DEBUG
-};
-
-static unsigned char debug_level = Pn544_FULL_DEBUG;
-//#define P61_DBG_MSG(msg...)  printk(KERN_INFO "[NXP-P61] :  " msg);
-
-#define Pn544_DBG_MSG(msg...)  \
-        switch(debug_level)      \
-        {                        \
-        case Pn544_DEBUG_OFF:      \
-        break;                 \
-        case Pn544_FULL_DEBUG:     \
-        printk(KERN_INFO "[NXP-pn544] :  " msg); \
-        break; \
-        default:                 \
-        printk(KERN_ERR "[NXP-pn544] :  Wrong debug level %d", debug_level); \
-        break; \
-        } \
-
-#define Pn544_ERR_MSG(msg...) printk(KERN_ERR "[NFC-pn544] : " msg );
-#endif
 
 //#define NFC_DEBUG
 

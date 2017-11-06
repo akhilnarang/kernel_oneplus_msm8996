@@ -82,6 +82,6 @@ obj-$(CONFIG_BATTERY_BCL)	+= battery_current_limit.o
 obj-$(CONFIG_MSM_BCL_CTL)	+= msm_bcl.o
 obj-$(CONFIG_MSM_BCL_PERIPHERAL_CTL) += bcl_peripheral.o
 obj-$(CONFIG_FG_BQ27541)	+= bq27541_fuelgauger.o
-obj-$(CONFIG_ONEPLUS_FASTCHG)	+= oneplus_fastcg.o
+obj-$(CONFIG_ONEPLUS_FASTCHG)	+= oneplus_fastcg.o op_dash_adapter.o
 obj-$(CONFIG_POWER_RESET)	+= reset/
 obj-$(CONFIG_ARCH_MSM)		+= qcom/

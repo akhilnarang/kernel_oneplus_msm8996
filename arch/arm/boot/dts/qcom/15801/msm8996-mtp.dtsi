@@ -1,4 +1,4 @@
-/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -50,7 +50,6 @@
 };
 
 &sdhc_1 {
-	/*zuoyonghua@connectivity 2015 12 07 hw11(T0) we used ufs , don't used emmc ,so disable it*/
 	status = "disabled";
 };
 
@@ -239,6 +238,10 @@
 	};
 };
 
+&mdss_hdmi_tx {
+	status = "disabled";
+};
+
 &pmi8994_vadc {
 	chan@0 {
 		label = "usbin";
@@ -287,13 +290,14 @@
 
 #include "msm8996-mdss-panels.dtsi"
 
-
 &mdss_mdp {
 	qcom,mdss-pref-prim-intf = "dsi";
 };
+
 &mdss_dsi {
 	hw-config = "single_dsi";
 };
+
 &mdss_dsi0 {
 	qcom,dsi-pref-prim-pan = <&dsi_samsung_s6e3fa3_1080p_cmd>;
 	pinctrl-names = "mdss_default", "mdss_sleep";
@@ -384,6 +388,8 @@
 		status = "ok";
 		compatible = "ti,bq27541-battery";
 		reg = <0x55>;
+		op,low-bat-voltage-uv=<3350000>;
+		op,low-bat-capacity=<10>;
 	};
 	oneplus_fastcg@26{
 		status = "ok";
@@ -394,15 +400,27 @@
 		microchip,ap-clk = <&tlmm 75 0x00>;
 		microchip,ap-data = <&tlmm 74 0x00>;
 
-		pinctrl-names = "mux_fastchg_active", "mux_fastchg_suspend";
-		pinctrl-0 = <&fastchg_active &usb_sw_active &ap_clk_active &ap_data_active>;
-		pinctrl-1 = <&usb_sw_suspend &fastchg_suspend &ap_clk_suspend &ap_data_suspend>;
+		pinctrl-names = "mux_fastchg_active",
+		"mux_fastchg_suspend",
+		"mcu_data_active",
+		"mcu_data_suspend";
+		pinctrl-0 = <&fastchg_active
+		&usb_sw_active
+		&ap_clk_active >;
+		pinctrl-1 = <&usb_sw_suspend
+		&fastchg_suspend
+		&ap_clk_suspend>;
+		pinctrl-2 =<&ap_data_active>;
+		pinctrl-3 =<&ap_data_suspend>;
+		clocks = <&clock_gcc clk_uart_snoc_msmbus_a_clk>,
+			 <&clock_gcc clk_uart_cnoc_msmbus_a_clk>;
+		clock-names = "snoc", "cnoc";
+
 	};
 };
 
 &pmi8994_fg {
 	qcom,battery-data = <&mtp_batterydata>;
-	//qcom,ext-sense-type;
 };
 
 &usb_otg_switch {
@@ -410,6 +428,7 @@
 };
 
 &pm8994_mpps {
+
 	mpp@a300 { /* MPP 4 */
 		qcom,mode = <4>; /* AIN input */
 		qcom,invert = <1>; /* Enable MPP */
@@ -480,7 +499,7 @@
 
 &pmi8994_pwm_4 {
 	qcom,channel-owner = "lcd_bl";
-	qcom,lpg-dtest-line = <4>;
+	qcom,dtest-line = <4>;
 	qcom,dtest-output = <1>;
 	status = "okay";
 };
@@ -500,7 +519,6 @@
 	i2c@75ba000 {
 		synaptics-rmi-ts@20 {
 			compatible = "synaptics,s3320";
-			//status = "disabled"; //T0 use new TP and LCD
 			reg = <0x20>;
 			interrupt-parent = <&tlmm>;
 			interrupts = <125 0x2008>;
@@ -553,13 +571,13 @@
 
 	};
 
+
 	tri_state_key {
 		compatible = "oneplus,tri-state-key";
 		interrupt-parent = <&tlmm>;
 		tristate,gpio_key2 = <&pm8994_gpios 4 0>;
 		tristate,gpio_key1 = <&pm8994_gpios 6 0>;
 		tristate,gpio_key3 = <&pm8994_gpios 5 0>;
-		//vdd_io-supply = <&pm8994_s4>;  // 1.8V
 
 		#pinctrl-names = "pmx_tri_state_key_active", "pmx_tri_state_key_suspend";
 		#pinctrl-0 = <&tri_state_key_active>;
@@ -624,34 +642,13 @@
 			linux,code = <115>;
 			debounce-interval = <15>;
 		};
-
-        vol_down {
+		vol_down {
 			label = "volume_down";
 			gpios = <&pm8994_gpios 2 0x1>;
 			linux,input-type = <1>;
 			linux,code = <114>;
 			debounce-interval = <15>;
 		};
-
-		/*
-		cam_snapshot {
-			label = "cam_snapshot";
-			gpios = <&pm8994_gpios 4 0x1>;
-			linux,input-type = <1>;
-			linux,code = <766>;
-			gpio-key,wakeup;
-			debounce-interval = <15>;
-		};
-
-		cam_focus {
-			label = "cam_focus";
-			gpios = <&pm8994_gpios 5 0x1>;
-			linux,input-type = <1>;
-			linux,code = <528>;
-			gpio-key,wakeup;
-			debounce-interval = <15>;
-		};
-                */
 
 		hallsensor_key {
 			label = "hallsensor_key";
@@ -708,9 +705,9 @@
 				"msm-dai-q6-dev.16396";
 		asoc-codec = <&stub_codec>,<&test_tfa9890>;
 		asoc-codec-names = "msm-stub-codec.1","tfa98xx.3-0036";
-
 	};
-    gpio_switch {
+
+	gpio_switch {
 		compatible = "oneplus,gpio_switch";
         gpios = <&tlmm  97 0x00>,
                 <&tlmm  98 0x00>,
@@ -879,7 +876,6 @@
 	};
 };
 
-
 &i2c_8 { /* BLSP2 QUP2 */
 	synaptics-rmi-ts@20 {
 		compatible = "HWK,synaptics,s1302";
@@ -888,7 +884,6 @@
 		interrupts = <132 0x2008>;
 		synaptics,irq-gpio = <&tlmm 132 0x2008>;
 		synaptics,reset-gpio = <&tlmm 76 0x00>;
-		//synaptics,en3v_gpio = <&tlmm 14 0x00>;
 		vdd_2v8-supply = <&pm8994_l13>;
 		vcc_i2c_1v8-supply = <&pm8994_s4>;
 		oem,cover_reject;//when esd test cover the phone on the panel don't report keys;
@@ -897,7 +892,7 @@
 		pinctrl-0 = <&tk_active>;
 		pinctrl-1 = <&tk_suspend>;
 	};
-    nq@28 {
+	nq@28 {
 		compatible = "nxp,pn544";
 		reg = <0x28>;
 		nxp,pn544-irq = <&tlmm 9 0x00>;
@@ -909,18 +904,12 @@
 		qcom,clk-src = "BBCLK2";
 		interrupts = <9 0>;
 		interrupt-names = "nfc_irq";
-		//pinctrl-names = "nfc_active", "nfc_suspend";
-		//pinctrl-0 = <&nfc_int_active &nfc_disable_active>;
-		//pinctrl-1 = <&nfc_int_suspend &nfc_disable_suspend>;
-		//clocks = <&clock_gcc clk_bb_clk2>;
 		clocks = <&clock_gcc clk_bb_clk2_pin>;
 		clock-names = "ref_clk";
-		//nfc_voltage-supply = <&pm8994_l9>; /*NFC don't contrl ldo 9 .ldo 9 contrled by modem, this will cause can,t recognise sim card*/
 		nfc_voltage_s4-supply = <&pm8994_s4>;
 	};
 };
 
-//spi_0:
 &spi_0 { /* BLSP1 QUP1 */
         p61-nxp-nfc@1 { //Slave driver and CS ID
                 compatible = "nxp,p61"; //Manufacture, and Model
@@ -931,23 +920,13 @@
                 spi-cs-high; //CS Active High
                 interrupt-parent = <&tlmm>; //GPIO Handler
                 interrupts = <34 0>; //GPIO # and flags
-                //pinctrl-names = "nxp_spi_irq_active", "nxp_spi_irq_suspend";
-                //pinctrl-0 = <&nfc_spi_irq_active>;
-                //pinctrl-1 = <&nfc_spi_irq_suspend>;
-                //#spi-cpol; //CPOL bit set for SPI polarity
-                //#spi-cpha; //CPHA bit set for SPI Phase
-                //nfc_voltage-supply = <&pm8994_l9>; /*NFC don't contrl ldo 9 .ldo 9 contrled by modem, this will cause can,t recognise sim card*/
         };
 };
 
 // msm8996.dtsi
 / {
 	aliases {
-		/delete-property/ sdhc_1;
-		/delete-property/ sdhc_2;
 		i2c3 = &i2c_3;
-		/delete-property/ pci-domain1;
-		/delete-property/ pci-domain2;
 	};
 
 	reserved-memory {
@@ -989,34 +968,7 @@
 			pinctrl-0 = <&i2c_3_active>;
 			pinctrl-1 = <&i2c_3_sleep>;
 	};
-};
 
-&i2c_8 {
-	qcom,disable-dma;
-};
-
-&clock_audio {
-	/delete-property/ pinctrl-0;
-	/delete-property/ pinctrl-1;
-};
-
-&pcie1 {
-		status = "disabled";
-};
-
-&pcie2 {
-		status = "disabled";
-};
-
-&wdog {
-		qcom,bark-time = <15000>;
-};
-
-&qusb_phy1 {
-		status = "disabled";
-};
-
-&soc {
 	qcom,cnss {
 		/delete-property/ wlan-ant-switch-supply;
 	};
@@ -1050,8 +1002,6 @@
 			pinctrl-1 = <&quat_mi2s_sleep  &quat_mi2s_sd0_sleep &quat_mi2s_sd1_sleep >;
 		};
 	};
-	/delete-node/ sdhc_1;
-	/delete-node/ sdhc_2;
 
 	ramoops {
 		compatible = "ramoops";
@@ -1076,6 +1026,23 @@
 	};
 };
 
+&clock_audio {
+	/delete-property/ pinctrl-0;
+	/delete-property/ pinctrl-1;
+};
+
+&pcie1 {
+		status = "disabled";
+};
+
+&pcie2 {
+		status = "disabled";
+};
+
+&qusb_phy1 {
+		status = "disabled";
+};
+
 // msm8996-ipcrouter.dtsi
 &soc {
 	qcom,ipc_router_external_modem_xprt2 {
@@ -1092,34 +1059,16 @@
 // msm8996-mdss.dtsi
 &mdss_mdp {
 	/delete-property/ qcom,mdss-idle-power-collapse-enabled;
-	/delete-property/ qcom,regs-dump-xin-id-mdp;
 };
-&smmu_mdp_unsec {
-	/delete-property/ reg;
-	/delete-property/ reg-names;
-};
-&smmu_rot_unsec {
-	/delete-property/ reg;
-	/delete-property/ reg-names;
-};
-&smmu_mdp_sec {
-	/delete-property/ reg;
-	/delete-property/ reg-names;
-};
-&smmu_rot_sec {
-	/delete-property/ reg;
-	/delete-property/ reg-names;
-};
+
 &mdss_dsi0 {
 	oled-vdda-supply = <&pm8994_s5>;
 	vddio-supply = <&pm8994_l18>;//power provide 3.3V
 	/delete-property/ lab-supply;
 	/delete-property/ ibb-supply;
 };
-&mdss_dsi {
-	/delete-node/ qcom,mdss_dsi_ctrl1@996000;
-};
-&mdss_hdmi_tx {
+
+&mdss_dsi1 {
 	status = "disabled";
 };
 
@@ -1129,10 +1078,33 @@
 	status = "disabled";
 };
 
+//msm8996-sde.dtsi
+&sde_kms {
+	status = "disabled";
+};
+
+&sde_dsi0 {
+	status = "disabled";
+};
+
+&sde_dsi1 {
+	status = "disabled";
+};
+
+&sde_dsi_phy0 {
+	status = "disabled";
+};
+
+&sde_dsi_phy1 {
+	status = "disabled";
+};
+
+&sde_hdmi {
+	status = "disabled";
+};
+
 //msm8996-pinctrl.dtsi start
 &tlmm {
-	/delete-node/ pmx_adv7533;
-
 	uart_console_deactive: uart_console_deactive {
 		mux {
 			pins = "gpio4", "gpio5";
@@ -1195,28 +1167,6 @@
 				bias-pull-down; /* pull down */
 			};
 		};
-	/delete-node/ mdss_disp_bkl_active;
-	/delete-node/ mdss_disp_bkl_suspend;
-	/delete-node/ gp_switch_active;
-	/delete-node/ gp_switch_suspend;
-	/delete-node/ sdc1_clk_on;
-	/delete-node/ sdc1_clk_off;
-	/delete-node/ sdc1_cmd_on;
-	/delete-node/ sdc1_cmd_off;
-	/delete-node/ sdc1_data_on;
-	/delete-node/ sdc1_data_off;
-	/delete-node/ sdc1_rclk_on;
-	/delete-node/ sdc1_rclk_off;
-	/delete-node/ sdc2_clk_on;
-	/delete-node/ sdc2_clk_off;
-	/delete-node/ sdc2_cmd_on;
-	/delete-node/ sdc2_cmd_off;
-	/delete-node/ sdc2_data_on;
-	/delete-node/ sdc2_data_off;
-	/delete-node/ sdc2_cd_on;
-	/delete-node/ sdc2_cd_off;
-	/delete-node/ sdc2_cd_on_sbc;
-	/delete-node/ sdc2_cd_off_sbc;
 
 	oneplus_fastchg {
 		fastchg_active: fastchg_active {
@@ -1372,8 +1322,6 @@
 		};
 	};
 
-	/delete-node/ ts_mux_sbc;
-
 	tk_mux {
 		tk_active: tk_active {
 			mux {
@@ -1402,43 +1350,6 @@
 		};
 	};
 
-	i2c_3 {
-		i2c_3_active: i2c_3_active {
-			mux {
-				pins = "gpio47", "gpio48";
-				function = "blsp_i2c3";
-			};
-
-			config {
-				pins = "gpio47", "gpio48";
-				drive-strength = <2>;
-				bias-disable;
-			};
-		};
-
-		i2c_3_sleep: i2c_3_sleep {
-			mux {
-				pins = "gpio47", "gpio48";
-				function = "blsp_i2c3";
-			};
-
-			config {
-				pins = "gpio47", "gpio48";
-				drive-strength = <2>;
-				bias-pull-up;
-			};
-		};
-	};
-	/delete-node/ pmx_fm_int;
-	/delete-node/ fm_int_suspend;
-	/delete-node/ pmx_fm_status;
-	/delete-node/ pmx_fm_rst;
-	/delete-node/ sec_mi2s;
-	/delete-node/ sec_mi2s_sd0;
-	/delete-node/ sec_mi2s_sd1;
-	/delete-node/ tert_mi2s;
-	/delete-node/ tert_mi2s_sd0;
-	/delete-node/ tert_mi2s_sd1;
 	quat_mi2s_mclk {
 		quat_mi2s_mclk_sleep: quat_mi2s_mclk_sleep {
 			mux {
@@ -1465,13 +1376,6 @@
 			};
 		};
 	};
-
-	/delete-node/ cam_csi1_sensor_active;
-	/delete-node/ cam_csi1_sensor_suspend;
-
-/*ruanbanmao modify 2015.12.25. gpio 90 is uesed as SPI cs, so we should remove from here.*/
-	/delete-node/ seta_18;
-/*ruanbanmao modify 2015.12.25. gpio 90 is uesed as SPI cs, so we should remove from here.*/
 
 	pmx_gpio_switch {
 		pmx_gpio_switch_pin_active: pmx_gpio_switch_pin_active {
@@ -1502,8 +1406,6 @@
 			};
 		};
 	};
-	/delete-node/ ap2mdm;
-	/delete-node/ mdm2ap;
 };
 &ts_active {
 	mux {
@@ -1632,14 +1534,6 @@
 		pins = "gpio23";
 	};
 };
-/*ruanbanmao modify 2015.12.25. gpio 90 is uesed as SPI cs, so we should remove from here.*/
-&tsif0_signals_active {
-	/delete-node/ tsif1_en;
-	signals_cfg {
-		pins = "gpio89", "gpio91";
-	};
-};
-/*ruanbanmao modify 2015.12.25. gpio 90 is uesed as SPI cs, so we should remove from here.*/
 
 // msm8996-pm.dtsi
 &soc {
@@ -1702,7 +1596,7 @@
 			<0xff 132>, /* blsp1_qup_irq(5) */
 			<0xff 133>, /* blsp2_qup_irq(0) */
 			<0xff 134>, /* blsp2_qup_irq(1) */
-			<0xff 135>,
+			<0xff 135>, /* blsp2_qup_irq(2) */
 			<0xff 138>, /* blsp2_qup_irq(5) */
 			<0xff 140>, /* blsp1_uart_irq(1) */
 			<0xff 146>, /* blsp2_uart_irq(1) */
@@ -1781,7 +1675,7 @@
 			<0xff 331>, /* camss_irq5 */
 			<0xff 332>, /* sps */
 			<0xff 336>,
-			<0xff 341>,
+			<0xff 341>, /* camss_irq6 */
 			<0xff 346>, /* camss_irq8 */
 			<0xff 347>, /* camss_irq9 */
 			<0xff 348>,
@@ -2070,12 +1964,12 @@
 		};
 	};
 	qcom,pmi8994@3 {
-		/delete-node/ qcom,leds@d800;
 		qcom,leds@d000 {
 			qcom,rgb-sync;
 		};
 	};
 };
+
 &pmi8994_charger {
 	qcom,iterm-ma = <200>;
 	qcom,float-voltage-mv = <4320>;
@@ -2109,9 +2003,10 @@
 	qcom,pre-normal-bat-decidegc = <160>;
 	qcom,warm-bat-decidegc = <450>;
 	qcom,hot-bat-decidegc = <530>;
+	qcom,cutoff-voltage-with-charger=<3250>;
 	qcom,thermal-mitigation = <2000 1300 1200 1200>;
-	/delete-property/ qcom,autoadjust-vfloat;
 };
+
 &pmi8994_fg {
 	qcom,resume-soc = <99>;
 	qcom,fg-iterm-ma = <200>;

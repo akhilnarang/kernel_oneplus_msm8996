@@ -1015,13 +1015,13 @@ struct mdss_overlay_private {
 	u32 ad_bl_events;
 
 	bool allow_kickoff;
+	struct kthread_worker worker;
+	struct kthread_work vsync_work;
+	struct task_struct *thread;
 
 	/* video frame info used by deterministic frame rate control */
 	struct mdss_mdp_frc_fsm *frc_fsm;
 	u8 sd_transition_state;
-	struct kthread_worker worker;
-	struct kthread_work vsync_work;
-	struct task_struct *thread;
 };
 
 struct mdss_mdp_set_ot_params {

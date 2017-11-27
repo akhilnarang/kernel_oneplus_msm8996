@@ -2462,6 +2462,9 @@ static int mdss_dsi_parse_panel_features(struct device_node *np,
 	mdss_dsi_parse_dcs_cmds(np, &ctrl->lp_off_cmds,
 			"qcom,mdss-dsi-lp-mode-off", NULL);
 
+	ctrl->high_brightness_panel= of_property_read_bool(np,
+		"qcom,mdss-dsi-high-brightness-panel");
+
 	return 0;
 }
 

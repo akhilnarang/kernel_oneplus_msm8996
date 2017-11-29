@@ -5523,6 +5523,7 @@ static void handle_usb_removal(struct smbchg_chip *chip)
 		chip->usb_enum_status = false;
 		chip->non_std_chg_present = false;
 		chip->boot_usb_present = true;
+		chip->re_trigr_dash_done = false;
 		qpnp_battery_temp_region_set(chip, BATT_TEMP_INVALID);
 		wake_unlock(&chip->chg_wake_lock);
 		cancel_delayed_work(&chip->non_standard_charger_check_work);

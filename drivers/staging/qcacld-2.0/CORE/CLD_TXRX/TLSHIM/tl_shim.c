@@ -501,7 +501,7 @@ static bool tlshim_is_pkt_drop_candidate(tp_wma_handle wma_handle,
 
 	peer = ol_txrx_find_peer_by_addr(pdev_ctx, peer_addr, &peer_id);
 	if (!peer) {
-		if (SIR_MAC_MGMT_ASSOC_REQ != subtype) {
+		if (IEEE80211_FC0_SUBTYPE_ASSOC_REQ != subtype) {
 			TLSHIM_LOGE(FL("Received mgmt frame: %0x from unknow peer: %pM"),
 				subtype, peer_addr);
 			should_drop = TRUE;
@@ -510,7 +510,7 @@ static bool tlshim_is_pkt_drop_candidate(tp_wma_handle wma_handle,
 	}
 
 	switch (subtype) {
-	case SIR_MAC_MGMT_ASSOC_REQ:
+	case IEEE80211_FC0_SUBTYPE_ASSOC_REQ:
 		if (peer->last_assoc_rcvd) {
 			if (adf_os_gettimestamp() - peer->last_assoc_rcvd <
 			    TLSHIM_MGMT_FRAME_DETECT_DOS_TIMER) {
@@ -520,7 +520,7 @@ static bool tlshim_is_pkt_drop_candidate(tp_wma_handle wma_handle,
 		}
 		peer->last_assoc_rcvd = adf_os_gettimestamp();
 		break;
-	case SIR_MAC_MGMT_DISASSOC:
+	case IEEE80211_FC0_SUBTYPE_DISASSOC:
 		if (peer->last_disassoc_rcvd) {
 			if (adf_os_gettimestamp() -
 			    peer->last_disassoc_rcvd <
@@ -531,7 +531,7 @@ static bool tlshim_is_pkt_drop_candidate(tp_wma_handle wma_handle,
 		}
 		peer->last_disassoc_rcvd = adf_os_gettimestamp();
 		break;
-	case SIR_MAC_MGMT_DEAUTH:
+	case IEEE80211_FC0_SUBTYPE_DEAUTH:
 		if (peer->last_deauth_rcvd) {
 			if (adf_os_gettimestamp() -
 			    peer->last_deauth_rcvd <
@@ -597,10 +597,10 @@ static int tlshim_mgmt_rx_process(void *context, u_int8_t *data,
 	}
 
 	if (hdr->buf_len < sizeof(struct ieee80211_frame) ||
-		hdr->buf_len > data_len) {
+	   (!saved_beacon && hdr->buf_len > data_len)) {
 		adf_os_spin_unlock_bh(&tl_shim->mgmt_lock);
-		TLSHIM_LOGE("Invalid rx mgmt packet, data_len %u, hdr->buf_len %u",
-				data_len, hdr->buf_len);
+		TLSHIM_LOGE("Invalid rx mgmt packet, saved_beacon %d, data_len %u, hdr->buf_len %u",
+				saved_beacon, data_len, hdr->buf_len);
 		return 0;
 	}
 
@@ -641,6 +641,17 @@ static int tlshim_mgmt_rx_process(void *context, u_int8_t *data,
 	rx_pkt->pkt_meta.mpdu_len = hdr->buf_len;
 	rx_pkt->pkt_meta.mpdu_data_len = hdr->buf_len -
 					 rx_pkt->pkt_meta.mpdu_hdr_len;
+
+	/*
+	 * If the mpdu_data_len is greater than Max (2k), drop the frame
+	 */
+	if (rx_pkt->pkt_meta.mpdu_data_len > WMA_MAX_MGMT_MPDU_LEN) {
+		adf_os_spin_unlock_bh(&tl_shim->mgmt_lock);
+		TLSHIM_LOGE("Data Len %d greater than max, dropping frame",
+			 rx_pkt->pkt_meta.mpdu_data_len);
+		vos_mem_free(rx_pkt);
+		return 0;
+	}
 
     /*
      * saved_beacon means this beacon is a duplicate of one

@@ -313,10 +313,17 @@ static int hdd_set_beacon_filter(hdd_adapter_t *adapter)
 	int i;
 	uint32_t ie_map[8] = {0};
 	VOS_STATUS vos_status = VOS_STATUS_E_FAILURE;
+	tHalHandle hal_ptr = WLAN_HDD_GET_HAL_CTX(adapter);
+	tpAniSirGlobal mac_ptr = PMAC_STRUCT(hal_ptr);
 
 	for (i = 0; i < ARRAY_SIZE(beacon_filter_table); i++)
 		__set_bit(beacon_filter_table[i],
 			  (unsigned long int *)ie_map);
+
+
+	if (TRUE == mac_ptr->sta_change_cc_via_beacon &&
+	    adapter->device_mode == WLAN_HDD_INFRA_STATION)
+		__set_bit(SIR_MAC_COUNTRY_EID, (unsigned long int *)ie_map);
 
 	vos_status = sme_set_beacon_filter(adapter->sessionId, ie_map);
 	if (!VOS_IS_STATUS_SUCCESS(vos_status)) {
@@ -5082,6 +5089,7 @@ static tANI_S32 hdd_ProcessGENIE(hdd_adapter_t *pAdapter,
     tDot11fIERSN dot11RSNIE;
     tDot11fIEWPA dot11WPAIE;
     tANI_U32 i;
+    tANI_U32 status;
     tANI_U8 *pRsnIe;
     tANI_U16 RSNIeLen;
     tPmkidCacheInfo PMKIDCache[4]; // Local transfer memory
@@ -5108,10 +5116,17 @@ static tANI_S32 hdd_ProcessGENIE(hdd_adapter_t *pAdapter,
         pRsnIe = gen_ie + 2;
         RSNIeLen = gen_ie_len - 2;
         // Unpack the RSN IE
-        dot11fUnpackIeRSN((tpAniSirGlobal) halHandle,
+        status = dot11fUnpackIeRSN((tpAniSirGlobal) halHandle,
                             pRsnIe,
                             RSNIeLen,
                             &dot11RSNIE);
+        if (DOT11F_FAILED(status))
+        {
+            hddLog(LOGE,
+                       FL("Parse failure in hdd_ProcessGENIE (0x%08x)"),
+                       status);
+            return -EINVAL;
+        }
         // Copy out the encryption and authentication types
         hddLog(LOG1, FL("%s: pairwise cipher suite count: %d"),
                 __func__, dot11RSNIE.pwise_cipher_suite_count );

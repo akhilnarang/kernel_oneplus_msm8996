@@ -9031,11 +9031,15 @@ static void hdd_update_tgt_vht_cap(hdd_context_t *hdd_ctx,
         value = 0;
     }
 
+    /* check and update MU BEAMFORMEE capability*/
+    if (pconfig->enableMuBformee && !cfg->vht_mu_bformee)
+        pconfig->enableMuBformee = cfg->vht_mu_bformee;
+
     /* set VHT MU Beamformee cap */
     if (value && !cfg->vht_mu_bformee) {
         status = ccmCfgSetInt(hdd_ctx->hHal,
                               WNI_CFG_VHT_MU_BEAMFORMEE_CAP,
-                              cfg->vht_mu_bformee, NULL,
+                              pconfig->enableMuBformee, NULL,
                               eANI_BOOLEAN_FALSE);
 
         if (status == eHAL_STATUS_FAILURE) {
@@ -11651,6 +11655,29 @@ hdd_adapter_t *hdd_open_adapter(hdd_context_t *hdd_ctx,
 	}
 
 	if (VOS_FTM_MODE != vos_get_conparam()) {
+		uint32_t cca_threshold;
+
+		cca_threshold = hdd_ctx->cfg_ini->cca_threshold_2g |
+				hdd_ctx->cfg_ini->cca_threshold_5g << 8;
+
+		if (hdd_ctx->cfg_ini->cca_threshold_enable) {
+			hddLog(VOS_TRACE_LEVEL_DEBUG,
+			       "%s: CCA Threshold is enabled.", __func__);
+			ret = process_wma_set_command((int)adapter->sessionId,
+					WMI_PDEV_PARAM_CCA_THRESHOLD,
+					cca_threshold,
+					PDEV_CMD);
+		} else {
+			ret = 0;
+		}
+
+		if (ret != 0) {
+			hddLog(VOS_TRACE_LEVEL_ERROR,
+			       "%s: WMI_PDEV_PARAM_CCA_THRESHOLD set failed %d",
+			       __func__, ret);
+			goto err_post_add_adapter;
+		}
+
 		ret = process_wma_set_command((int)adapter->sessionId,
 			      (int)WMI_PDEV_PARAM_HYST_EN,
 			      (int)hdd_ctx->cfg_ini->enableMemDeepSleep,
@@ -13153,10 +13180,10 @@ void hdd_dump_concurrency_info(hdd_context_t *pHddCtx)
 #endif
        pHddCtx->mcc_mode = mcc_mode;
    }
-   hddLog(VOS_TRACE_LEVEL_INFO, "wlan(%d) " MAC_ADDRESS_STR " %s",
+   hddLog(VOS_TRACE_LEVEL_ERROR, "wlan(%d) " MAC_ADDRESS_STR " %s",
                 staChannel, MAC_ADDR_ARRAY(staBssid), mcc_mode ? "MCC" : "SCC");
    if (p2pChannel > 0) {
-       hddLog(VOS_TRACE_LEVEL_INFO, "p2p-%s(%d) " MAC_ADDRESS_STR,
+       hddLog(VOS_TRACE_LEVEL_ERROR, "p2p-%s(%d) " MAC_ADDRESS_STR,
                      p2pMode, p2pChannel, MAC_ADDR_ARRAY(p2pBssid));
    }
    if (apChannel1 > 0) {
@@ -14253,7 +14280,6 @@ void __hdd_wlan_exit(void)
 
    hdd_close_tx_queues(pHddCtx);
    //Do all the cleanup before deregistering the driver
-   memdump_deinit();
    hdd_driver_memdump_deinit();
    hdd_wlan_exit(pHddCtx);
    EXIT();
@@ -15606,6 +15632,7 @@ static int hdd_initialize_mac_address(hdd_context_t *hdd_ctx)
 	}
 	return 0;
 }
+
 /**---------------------------------------------------------------------------
 
   \brief hdd_wlan_startup() - HDD init function
@@ -16085,7 +16112,6 @@ int hdd_wlan_startup(struct device *dev, v_VOID_t *hif_sc)
       vos_set_load_in_progress(VOS_MODULE_ID_VOSS, FALSE);
       pHddCtx->isLoadInProgress = FALSE;
 
-      memdump_init();
       hdd_driver_memdump_init();
       hddLog(LOGE, FL("FTM driver loaded"));
       wlan_comp.status = 0;
@@ -16512,6 +16538,10 @@ int hdd_wlan_startup(struct device *dev, v_VOID_t *hif_sc)
       hdd_set_idle_ps_config(pHddCtx, TRUE);
    }
 
+   if ((pHddCtx->cfg_ini->enable_ac_txq_optimize >> 4) & 0x01)
+      sme_set_ac_txq_optimize(pHddCtx->hHal,
+                              &pHddCtx->cfg_ini->enable_ac_txq_optimize);
+
    if (pHddCtx->cfg_ini->enable_go_cts2self_for_sta)
        sme_set_cts2self_for_p2p_go(pHddCtx->hHal);
 
@@ -16700,8 +16730,9 @@ int hdd_wlan_startup(struct device *dev, v_VOID_t *hif_sc)
    if (pHddCtx->cfg_ini->enable_dynamic_sta_chainmask)
       hdd_decide_dynamic_chain_mask(pHddCtx,
                             HDD_ANTENNA_MODE_1X1);
-   memdump_init();
+
    hdd_driver_memdump_init();
+
    if (pHddCtx->cfg_ini->goptimize_chan_avoid_event) {
        hal_status = sme_enable_disable_chanavoidind_event(pHddCtx->hHal, 0);
        if (eHAL_STATUS_SUCCESS != hal_status)
@@ -17029,6 +17060,9 @@ static int hdd_driver_init( void)
    do {
 
 #ifndef MODULE
+      /* For statically linked driver, call hdd_set_conparam to update curr_con_mode
+       */
+      hdd_set_conparam((v_UINT_t)con_mode);
       if (WLAN_IS_EPPING_ENABLED(con_mode)) {
          ret_status =  epping_driver_init(con_mode, &wlan_wake_lock,
                           WLAN_MODULE_NAME);
@@ -17067,12 +17101,6 @@ static int hdd_driver_init( void)
    MTRACE(hddTraceInit());
 #endif
    hdd_register_debug_callback();
-
-#ifndef MODULE
-      /* For statically linked driver, call hdd_set_conparam to update curr_con_mode
-       */
-      hdd_set_conparam((v_UINT_t)con_mode);
-#endif
 
    ret_status = hdd_hif_register_driver();
    vos_remove_pm_qos();
@@ -18835,6 +18863,7 @@ void wlan_hdd_check_sta_ap_concurrent_ch_intf(void *data)
     tHalHandle hHal;
     hdd_ap_ctx_t *pHddApCtx;
     uint16_t intf_ch = 0, vht_channel_width = 0;
+    eCsrBand orig_band, new_band;
 
    if ((pHddCtx->cfg_ini->WlanMccToSccSwitchMode == VOS_MCC_TO_SCC_SWITCH_DISABLE)
        || !(vos_concurrent_open_sessions_running()
@@ -18859,12 +18888,37 @@ void wlan_hdd_check_sta_ap_concurrent_ch_intf(void *data)
     if (intf_ch == 0)
         return;
 
+    if (pHddApCtx->sapConfig.band_switch_enable) {
+        if (pHddApCtx->sapConfig.channel > MAX_2_4GHZ_CHANNEL) {
+            orig_band = eCSR_BAND_5G;
+        } else {
+            orig_band = eCSR_BAND_24;
+        }
+
+        if (intf_ch > MAX_2_4GHZ_CHANNEL) {
+            new_band = eCSR_BAND_5G;
+        } else {
+            new_band = eCSR_BAND_24;
+        }
+
+        if (orig_band != new_band) {
+            if (new_band == eCSR_BAND_5G) {
+                pHddApCtx->sapConfig.ch_width_orig =
+                    pHddApCtx->sapConfig.ch_width_5g_orig;
+            } else {
+                pHddApCtx->sapConfig.ch_width_orig =
+                    pHddApCtx->sapConfig.ch_width_24g_orig;
+            }
+        }
+    }
+
     hddLog(VOS_TRACE_LEVEL_INFO,
         FL("SAP restarts due to MCC->SCC switch, orig chan: %d, new chan: %d"),
         pHddApCtx->sapConfig.channel, intf_ch);
 
     pHddApCtx->sapConfig.channel = intf_ch;
     pHddApCtx->bss_stop_reason = BSS_STOP_DUE_TO_MCC_SCC_SWITCH;
+
     sme_SelectCBMode(hHal,
                      pHddApCtx->sapConfig.SapHw_mode,
                      pHddApCtx->sapConfig.channel,
@@ -19354,22 +19408,6 @@ void hdd_get_fw_version(hdd_context_t *hdd_ctx,
 	*minor_spid = (hdd_ctx->target_fw_version & 0xf000000) >> 24;
 	*siid = (hdd_ctx->target_fw_version & 0xf00000) >> 20;
 	*crmid = hdd_ctx->target_fw_version & 0x7fff;
-}
-
-/**
- * hdd_is_memdump_supported() - to check if memdump feature support
- *
- * This function is used to check if memdump feature is supported in
- * the host driver
- *
- * Return: true if supported and false otherwise
- */
-bool hdd_is_memdump_supported(void)
-{
-#ifdef WLAN_FEATURE_MEMDUMP
-	return true;
-#endif
-	return false;
 }
 
 #ifdef QCA_CONFIG_SMP

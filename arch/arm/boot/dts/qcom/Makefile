@@ -40,7 +40,8 @@ dtb-$(CONFIG_ARCH_MDM9650) += mdm9650-sim.dtb \
 	mdm9650-v1.1-nand-ccard-v2.dtb \
 	mdm9650-v1.1-emmc-pcie-ep-mtp.dtb \
 	mdm9650-v1.1-nand-pcie-ep-mtp.dtb \
-	mdm9650-v1.1-nand-cv2x.dtb
+	mdm9650-v1.1-nand-cv2x.dtb \
+	mdm9650-v1.1-nand-rome-sdio-mtp.dtb
 
 dtb-$(CONFIG_ARCH_SDX20) += sdx20-emmc-cdp.dtb \
 	sdx20-emmc-mtp.dtb \
@@ -90,6 +91,7 @@ dtb-$(CONFIG_ARCH_MSM8917) += msm8917-rumi.dtb \
 	msm8917-pmi8940-cdp.dtb \
 	msm8917-pmi8940-mtp.dtb \
 	msm8917-pmi8950-cdp.dtb \
+	msm8917-pmi8950-cdp-mirror-lake-touch.dtb \
 	msm8917-pmi8950-ext-codec-cdp.dtb \
 	msm8917-pmi8950-mtp.dtb \
 	msm8917-pmi8937-rcm.dtb \
@@ -174,8 +176,10 @@ dtb-$(CONFIG_ARCH_MSM8916) += msm8952-qrd-skum.dtb \
        msm8952-mtp.dtb
 
 dtb-$(CONFIG_ARCH_MSM8909) += msm8909-pm8916-mtp.dtb \
+	msm8909-cdp.dtb \
         msm8909-1gb-qrd-skuc.dtb \
         msm8909-1gb-qrd-skue.dtb \
+        msm8909-qrd-skue.dtb \
 	msm8909w-wtp.dtb \
 	apq8009w-wtp.dtb \
 	apq8009w-cdp.dtb \
@@ -219,8 +223,10 @@ dtb-$(CONFIG_ARCH_MSM8909) += msm8909-pm8916-mtp.dtb \
 	apq8009-robot-rome.dtb \
 	apq8009-mtp-drone.dtb \
 	msm8909-mtp.dtb \
-	msm8909-1gb-mtp.dtb
-
+	msm8909-1gb-mtp.dtb \
+	msm8909-1gb-rcm.dtb \
+	msm8909-pm8916-1gb-rcm.dtb \
+        msm8909-1gb-cdp.dtb
 
 ifeq ($(CONFIG_ARM64),y)
 always          := $(dtb-y)

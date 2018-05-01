@@ -1005,9 +1005,9 @@ CSID_TG:
         push_component_info(CameraID,match_tbl[i].sensor_name,
             match_tbl[i].vendor_name);
 
-	msm_sensor_fill_sensor_info(s_ctrl, probed_info, entity_name);
+    msm_sensor_fill_sensor_info(s_ctrl, probed_info, entity_name);
 
-	return rc;
+    return rc;
 
 camera_power_down:
 	s_ctrl->func_tbl->sensor_power_down(s_ctrl);
